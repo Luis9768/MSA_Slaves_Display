@@ -15,17 +15,19 @@
 /* Color depth: 1 (1 byte per pixel), 8 (RGB332), 16 (RGB565), 32 (ARGB8888) */
 #define LV_COLOR_DEPTH 16
 
-/* Swap the 2 bytes of RGB565 color. Useful if the display has an 8-bit interface (e.g. SPI)*/
+/* Swap the 2 bytes of RGB565 color. Useful if the display has an 8-bit
+ * interface (e.g. SPI)*/
 #define LV_COLOR_16_SWAP 0
 
 /* 1: Enable screen transparency.
  * Useful for OSD or other overlapping GUIs.
- * Requires `LV_COLOR_DEPTH = 32` colors and the screen's style should be modified: `style.body.opa = LV_OPA_TRANSP`
+ * Requires `LV_COLOR_DEPTH = 32` colors and the screen's style should be
+ * modified: `style.body.opa = LV_OPA_TRANSP`
  * */
 #define LV_COLOR_SCREEN_TRANSP 0
 
 /*Images pixels with this color will not be drawn if they are chroma keyed)*/
-#define LV_COLOR_CHROMA_KEY lv_color_hex(0x00ff00)         /*pure green*/
+#define LV_COLOR_CHROMA_KEY lv_color_hex(0x00ff00) /*pure green*/
 
 /*=========================
    MEMORY SETTINGS
@@ -35,10 +37,11 @@
 #define LV_MEM_CUSTOM 0
 
 /*Size of the memory available for `lv_mem_alloc` in bytes (>= 2kB)*/
-#define LV_MEM_SIZE (48U * 1024U)          /*[bytes]*/
+#define LV_MEM_SIZE (48U * 1024U) /*[bytes]*/
 
-/*Set an address for the memory pool instead of allocating it as a normal array. Can be in external SRAM too.*/
-#define LV_MEM_ADR 0     /*0: unused*/
+/*Set an address for the memory pool instead of allocating it as a normal array.
+ * Can be in external SRAM too.*/
+#define LV_MEM_ADR 0 /*0: unused*/
 
 /*Use a custom tick source that tells the elapsed time in milliseconds.
  *It removes the need to manually update the tick with `lv_tick_inc()`)*/
@@ -52,19 +55,19 @@
 
 /*Montserrat fonts with ASCII range and some symbols using bpp = 4
  *https://fonts.google.com/specimen/Montserrat*/
-#define LV_FONT_MONTSERRAT_8  0
+#define LV_FONT_MONTSERRAT_8 0
 #define LV_FONT_MONTSERRAT_10 0
 #define LV_FONT_MONTSERRAT_12 0
-#define LV_FONT_MONTSERRAT_14 1  /* Habilitado */
+#define LV_FONT_MONTSERRAT_14 1 /* Habilitado */
 #define LV_FONT_MONTSERRAT_16 0
-#define LV_FONT_MONTSERRAT_18 0
+#define LV_FONT_MONTSERRAT_18 1 /* Habilitado (Requested) */
 #define LV_FONT_MONTSERRAT_20 0
-#define LV_FONT_MONTSERRAT_22 1  /* Habilitado */
+#define LV_FONT_MONTSERRAT_22 1 /* Habilitado */
 #define LV_FONT_MONTSERRAT_24 0
 #define LV_FONT_MONTSERRAT_26 0
 #define LV_FONT_MONTSERRAT_28 0
 #define LV_FONT_MONTSERRAT_30 0
-#define LV_FONT_MONTSERRAT_32 1  /* Habilitado para o contador gigante */
+#define LV_FONT_MONTSERRAT_32 1 /* Habilitado para o contador gigante */
 #define LV_FONT_MONTSERRAT_34 0
 #define LV_FONT_MONTSERRAT_36 0
 #define LV_FONT_MONTSERRAT_38 0

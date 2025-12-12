@@ -9,17 +9,15 @@ void setupPrinter() {
   Serial.println(">>> PrinterManager: Serial Iniciada (TX=27, 9600)");
 }
 
-void imprimirEtiqueta(Receita r, int contador) {
+void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
   if (r.id == 0)
     return;
 
   // --- DADOS PARA O ZPL ---
-  // Como o Slave não tem RTC nem Login de Operador (por enquanto),
-  // vamos usar valores padrão ou extrair do código se possível.
-
-  // Tenta extrair data de algum lugar ou usa Data Atual (fixa por enquanto)
-  int dia = 11, mes = 12, ano = 25;
-  int reValor = 9999; // RE Genérico para Slave
+  int dia = data.dia;
+  int mes = data.mes;
+  int ano = data.ano;
+  int reValor = re;
 
   unsigned long codigoProd = atol(r.codigo);
 
