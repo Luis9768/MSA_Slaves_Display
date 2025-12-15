@@ -32,6 +32,9 @@ void setup() {
   // 3. Inicializa Impressora
   setupPrinter();
 
+  // 4. Inicializa Sensor
+  pinMode(PIN_SENSOR_PRODUTO, INPUT_PULLUP);
+
   Serial.println(">>> SLAVE INICIADO (CAROUSEL + PRINTER) <<<");
 }
 
@@ -162,35 +165,76 @@ void loop() {
 
   // LOGICA SCANNER GLOBAL (Só ativa no estado 3)
   if (Serial.available()) {
-    char c = Serial.read();
-    if (c == '1') {
+    String input = Serial.readStringUntil('\n');
+    input.trim(); // Remove \r \n spaces
+
+    if (input.length() > 0) {
+      Serial.printf(">>> SCANNER LEU: [%s] <<<\n", input.c_str());
+
       if (estadoAtual == 3) {
-        if (contadorProducao >= receitaAtiva.quantidade) {
-          Serial.println(">>> JA ESTA CHEIO! <<<");
-        } else {
-          contadorProducao++;
-          atualizarContador(contadorProducao, receitaAtiva.quantidade);
-          Serial.printf(">>> MANUAL: %d/%d <<<\n", contadorProducao,
-                        receitaAtiva.quantidade); // Feedback para teste
-          // Imprime usando Data e RE globais
-          imprimirEtiqueta(receitaAtiva, contadorProducao, currentDate,
-                           currentRE);
+        // Validação: É "1" (Teste), é o Codigo ou é o Barcode?
+        bool valido = (input == "1") ||
+                      (String(receitaAtiva.barcode) == input) ||
+                      (String(receitaAtiva.codigo) == input);
 
-          // Verifica se concluiu
+        if (valido) {
           if (contadorProducao >= receitaAtiva.quantidade) {
-            Serial.println(">>> PRODUCAO CONCLUIDA! <<<");
-            mostrarMensagemProducaoConcluida();
-            timeProducaoConcluida = millis();
-            estadoAtual = 4;
-          }
+            Serial.println(">>> JA ESTA CHEIO! <<<");
+          } else {
+            contadorProducao++;
+            atualizarContador(contadorProducao, receitaAtiva.quantidade);
+            Serial.printf(">>> SUCESSO: %d/%d <<<\n", contadorProducao,
+                          receitaAtiva.quantidade);
 
-          delay(50);
-          while (Serial.available())
-            Serial.read();
+            // Imprime Etiqueta
+            imprimirEtiqueta(receitaAtiva, contadorProducao, currentDate,
+                             currentRE);
+
+            // Verifica se concluiu
+            if (contadorProducao >= receitaAtiva.quantidade) {
+              Serial.println(">>> PRODUCAO CONCLUIDA! <<<");
+              mostrarMensagemProducaoConcluida();
+              timeProducaoConcluida = millis();
+              estadoAtual = 4;
+            }
+          }
+        } else {
+          Serial.println(
+              ">>> ERRO: CODIGO DE BARRAS INVALIDO PARA ESTE PRODUTO! <<<");
         }
+      } else {
+        Serial.println(">>> ERRO: NAO ESTA NA TELA DE PRODUCAO <<<");
       }
     }
   }
+
+  // LOGICA SENSOR FISICO (Simulação ou Sensor Real NPN)
+  static int lastSensorState = HIGH;
+  int sensorState = digitalRead(PIN_SENSOR_PRODUTO);
+
+  if (estadoAtual == 3 && lastSensorState == HIGH && sensorState == LOW) {
+    // Borda de descida detectada (Fio encostou no GND)
+    Serial.println(">>> SENSOR FISICO ACIONADO! <<<");
+
+    if (contadorProducao >= receitaAtiva.quantidade) {
+      Serial.println(">>> JA ESTA CHEIO! <<<");
+    } else {
+      contadorProducao++;
+      atualizarContador(contadorProducao, receitaAtiva.quantidade);
+      Serial.printf(">>> SUCESSO (SENSOR): %d/%d <<<\n", contadorProducao,
+                    receitaAtiva.quantidade);
+
+      imprimirEtiqueta(receitaAtiva, contadorProducao, currentDate, currentRE);
+
+      if (contadorProducao >= receitaAtiva.quantidade) {
+        mostrarMensagemProducaoConcluida();
+        timeProducaoConcluida = millis();
+        estadoAtual = 4;
+      }
+    }
+    delay(200); // Debounce basico
+  }
+  lastSensorState = sensorState;
 
   // Pequeno delay para não fritar a CPU (opcional, mas bom para LVGL)
   delay(5);

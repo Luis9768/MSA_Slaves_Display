@@ -6,15 +6,19 @@
 
 #define MAX_RECEITAS 200
 
-#define TOUCH_XPT_CS   33
-#define TOUCH_XPT_IRQ  36
+#define TOUCH_XPT_CS 33
+#define TOUCH_XPT_IRQ 36
 #define TOUCH_XPT_MOSI 32
 #define TOUCH_XPT_MISO 39
-#define TOUCH_XPT_CLK  25
+#define TOUCH_XPT_CLK 25
 
 // Printer Config
 #define PRINTER_TX_PIN 27
 #define PRINTER_BAUD 9600
+
+// Sensor Simulado (GND para acionar)
+#define PIN_SENSOR_PRODUTO                                                     \
+  22 // Alterado para 22 (21 era backlight, 13 era MOSI)
 
 // OTA Config
 #define OTA_WIFI_PASS "YOUR_PASSWORD_HERE" // ALTERE PARA A SENHA DO MASTER
