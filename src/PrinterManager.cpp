@@ -1,26 +1,19 @@
 #include "PrinterManager.h"
 #include "Config.h"
+#include <HardwareSerial.h>
 
-#if !PRINTER_USES_MAIN_SERIAL
+#if PRINTER_USES_MAIN_SERIAL
+#define PRINTER_OBJ Serial
+#else
 HardwareSerial printerSerial(2);
 #define PRINTER_OBJ printerSerial
-#else
-#define PRINTER_OBJ Serial
 #endif
 
 void setupPrinter() {
 #if PRINTER_USES_MAIN_SERIAL
-// Se usa a Serial padrao, ela pode ja ter sido iniciada no setup() se
-// DEBUG_ENABLED=1 Mas se DEBUG_ENABLED=0, precisamos iniciar aqui com o
-// Baudrate da impressora
 #if !DEBUG_ENABLED
   PRINTER_OBJ.begin(PRINTER_BAUD);
 #else
-  // Se debug esta ativo, ja iniciou com 115200.
-  // Se a impressora exigir 9600, teremos conflito.
-  // O usuario optou por desativar Debug, entao DEBUG_ENABLED deve ser 0.
-  // Se por acaso ligar debug, a impressora vai receber lixo se baud for
-  // diferente.
   PRINTER_OBJ.updateBaudRate(PRINTER_BAUD);
 #endif
 #else
@@ -32,10 +25,6 @@ void setupPrinter() {
 }
 
 void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
-  if (r.id == 0)
-    return;
-
-  // --- DADOS PARA O ZPL ---
   int dia = data.dia;
   int mes = data.mes;
   int ano = data.ano;
@@ -59,28 +48,52 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
              "^BY3,2,85^FT329,423^BEI,,Y,N\r\n^FD%s^FS\r\n", r.barcode);
   }
 
-  // CODIGO ORIGINAL (RESTAURADO E ADAPTADO)
+  // CODIGO ORIGINAL (RESTAURADO COM ZPL DO USUARIO)
   int escrito = snprintf(
       zplBuffer, ZPL_BUFFER_SIZE,
-      // HEADER SIMPLIFICADO
+      "CT~~CD,~CC^~CT~\r\n"
+      "^XA~TA000~JSN^LT0^MNW^MTT^PON^PMN^LH0,0^JMA^PR2,2~SD25^JUS^LRN^CI0^"
+      "XZ\r\n"
       "^XA\r\n"
+      "^CI28\r\n"
+      "^MMT\r\n"
+      "^POI\r\n"
       "^PW400\r\n"
       "^LL0599\r\n"
-      // Removido ^CI28 (UTF-8) para compatibilidade maxima
-
-      // LOGO MSA (Texto Simples)
-      "^FO50,30^A0N,80,80^FDMSA^FS\r\n"
+      "^LS0\r\n"
+      // Imagem GFA do Usuario
+      "^FO0,0^GFA,01920,01920,00020,:Z64:"
+      "eJzt1LFrU0EcB/"
+      "Df9TT3moY8M4S0EH0hASkO+opLQeRlEVcHsykUFFxTirSD5Z0VNEMHR0ELBRfJX+"
+      "B4oliHDi7iovSmztepb3jN+fvde6+0qYPQ0skfgVy++by7e793CcD/Ol1dcq/"
+      "j1QLw3GATynnEFEAzHzTzjEuAaTfI37EE0JgxGsw5D1DyYPPjANZk1ZttfZgte3idaN7Z23t"
+      "3d99caT5YfJY2pj8BTHlf23OD3VZYrpQ6A8nevAAIZn4uz13+"
+      "1Q8bzcbShqzXPpNbv9rxvrXCtne9MymnXq8B1Grbj5dmtvvhcuXLkxn1tLYF0Hk72H1/"
+      "a12HHW/"
+      "QDnX7JrrFjZ2tpZ0t1X+0erBv+"
+      "vHtV3i7njcBA4AF3LmWoTf58rATFxVmXegDa3SLzJeYSa6BR7LI6thFoVgXeP30j+"
+      "Rf6uHv8VJgT5SE+ER29m5EUldxVxWwCbcK+xJTZuikNMGmDDOcz7lp56KE5Q5n/"
+      "J65mLIYncRMzecOP5JTlK04F5nCXRsOJbkqRLpwDA/"
+      "fiqCNHTpFHVvxXXboXOZcoLuxc5qyhJyO9EIkY3QGI5aQM4Hqx3LM+"
+      "UqPOx1gRgtYUx4OeYJf3NC+"
+      "REf9M8KmLmuY4LkJGLmkyDi5AMilmIkUM4HIBHQT1NukcMz4hUvEAS3uHCOXovNHlOkqT6qZ"
+      "Y9b49kfvPl7IU9+5kcusHXGDruScxSyg54pOpCJzeMvOMVPh6UTmMAuy7IJIS85RFrn5Ek+"
+      "MJljmevfqqz1aF8QIMidxb/"
+      "OuYeBTRk4dyeyY487xYw6bE1jMyKkjzh5xdF5854RzOnd4qiIr+Tn9Pv7meieqe9Z/"
+      "EedRfwAl7WoT:0C11\r\n"
 
       "^FT375,547^A0I,32,31^FH\\^FDCODIGO: %06lu^FS\r\n"
       "^FT375,523^A0I,20,19^FH\\^FD%s^FS\r\n"
-      "%s" // Barcode
+
+      // Barcode
+      "%s"
+
       "^FO13,365^GB371,0,8^FS\r\n"
       "^FT356,330^A0I,31,31^FH\\^FDFAB:^FS\r\n"
-
-      // Data - Removidos comandos de relogio (^SL, ^FC) que podem travar
+      "^SL0\r\n"
       "^FT287,330^A0I,31,31\r\n"
+      "^FC%%,{,#\r\n"
       "^FD%02u/%02u/%02u^FS\r\n"
-
       "^FT341,287^A0I,31,31^FH\\^FDRE:^FS\r\n"
       "^FT287,287^A0I,31,31^FH\\^FD%04u^FS\r\n"
       "^FT372,233^A0I,31,31^FH\\^FDSEQUENCIAL:^FS\r\n"
@@ -98,6 +111,6 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
     PRINTER_OBJ.flush();
     DBGF(">>> ETIQUETA IMPRESSA: %s (Seq: %d) <<<\n", r.descricao, contador);
   } else {
-    DBGLN("Erro ao montar ZPL!");
+    DBGLN(">>> ERRO: ZPL Buffer Overflow ou Erro de Formatacao! <<<");
   }
 }
