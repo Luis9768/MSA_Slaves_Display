@@ -233,6 +233,13 @@ void mostrarCarouselSlave(std::vector<Receita> lista, int indice) {
   }
 }
 
+// Handler para o botão ZERAR
+void event_handler_btn_reset_click(lv_event_t *e) {
+  if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+    produtoSelecionado = -10; // Código para RESET
+  }
+}
+
 // --- TELA PRODUCAO UPDATE ---
 void mostrarTelaProducao(Receita r) {
   lv_obj_clean(lv_scr_act());
@@ -308,6 +315,18 @@ void mostrarTelaProducao(Receita r) {
   lv_label_set_text_fmt(lblMeta, "META: %d", r.quantidade);
   lv_obj_align(lblMeta, LV_ALIGN_BOTTOM_MID, 0, -40);
   lv_obj_set_style_text_color(lblMeta, lv_palette_main(LV_PALETTE_GREY), 0);
+
+  // Botão ZERAR (Novo) - Canto Inferior Esquerdo
+  lv_obj_t *btnReset = lv_btn_create(lv_scr_act());
+  lv_obj_set_size(btnReset, 80, 40);
+  lv_obj_align(btnReset, LV_ALIGN_BOTTOM_LEFT, 10, -10);
+  lv_obj_set_style_bg_color(btnReset, lv_palette_main(LV_PALETTE_GREY), 0);
+  lv_obj_add_event_cb(btnReset, event_handler_btn_reset_click, LV_EVENT_CLICKED,
+                      NULL);
+
+  lv_obj_t *lblReset = lv_label_create(btnReset);
+  lv_label_set_text(lblReset, "ZERAR");
+  lv_obj_center(lblReset);
 }
 
 void atualizarContador(int qtd, int meta) {

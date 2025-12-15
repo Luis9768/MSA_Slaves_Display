@@ -141,6 +141,12 @@ void loop() {
       idProdutoAtual = 0;
       mostrarCarouselSlave(getListaReceitas(), 0);
     }
+    // RESET MANUAL (ID -10)
+    else if (acao == -10) {
+      Serial.println(">>> RESET MANUAL DE CONTAGEM <<<");
+      contadorProducao = 0;
+      atualizarContador(0, receitaAtiva.quantidade);
+    }
 
     // Nao tem mais navegacao de proximo produto aqui
   } else if (estadoAtual == 4) { // ESTADO: CONCLUIDA (WAIT)
