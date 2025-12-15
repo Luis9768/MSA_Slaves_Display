@@ -1,12 +1,34 @@
 #include "PrinterManager.h"
 #include "Config.h"
 
+#if !PRINTER_USES_MAIN_SERIAL
 HardwareSerial printerSerial(2);
+#define PRINTER_OBJ printerSerial
+#else
+#define PRINTER_OBJ Serial
+#endif
 
 void setupPrinter() {
-  // Inicializa Serial 2 para a Impressora (TX=27)
+#if PRINTER_USES_MAIN_SERIAL
+// Se usa a Serial padrao, ela pode ja ter sido iniciada no setup() se
+// DEBUG_ENABLED=1 Mas se DEBUG_ENABLED=0, precisamos iniciar aqui com o
+// Baudrate da impressora
+#if !DEBUG_ENABLED
+  PRINTER_OBJ.begin(PRINTER_BAUD);
+#else
+  // Se debug esta ativo, ja iniciou com 115200.
+  // Se a impressora exigir 9600, teremos conflito.
+  // O usuario optou por desativar Debug, entao DEBUG_ENABLED deve ser 0.
+  // Se por acaso ligar debug, a impressora vai receber lixo se baud for
+  // diferente.
+  PRINTER_OBJ.updateBaudRate(PRINTER_BAUD);
+#endif
+#else
+  // Inicializa Serial 2 para a Impressora
   printerSerial.begin(PRINTER_BAUD, SERIAL_8N1, -1, PRINTER_TX_PIN);
-  Serial.println(">>> PrinterManager: Serial Iniciada (TX=27, 9600)");
+#endif
+
+  DBGLN(">>> PrinterManager: Iniciada");
 }
 
 void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
@@ -76,13 +98,12 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
       (unsigned int)mes, (unsigned int)ano, reValor, (unsigned long)contador);
 
   if (escrito > 0 && escrito < (int)ZPL_BUFFER_SIZE) {
-    // Envia para impressora real
-    printerSerial.write(reinterpret_cast<const uint8_t *>(zplBuffer),
-                        (size_t)escrito);
-    printerSerial.flush();
-    Serial.printf(">>> ETIQUETA IMPRESSA: %s (Seq: %d) <<<\n", r.descricao,
-                  contador);
+    // Envia para impressora
+    PRINTER_OBJ.write(reinterpret_cast<const uint8_t *>(zplBuffer),
+                      (size_t)escrito);
+    PRINTER_OBJ.flush();
+    DBGF(">>> ETIQUETA IMPRESSA: %s (Seq: %d) <<<\n", r.descricao, contador);
   } else {
-    Serial.println("Erro ao montar ZPL!");
+    DBGLN("Erro ao montar ZPL!");
   }
 }

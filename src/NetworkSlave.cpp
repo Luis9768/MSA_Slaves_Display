@@ -37,19 +37,19 @@ void carregarReceitasNVS() {
     }
   }
   listaAtualizada = true;
-  Serial.printf("Carregadas %d receitas da NVS\n", listaReceitas.size());
+  DBGF("Carregadas %d receitas da NVS\n", listaReceitas.size());
 }
 
 // Callback quando recebe dados
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
-  Serial.printf(">>> RECVD: %d bytes <<<\n", len);
+  DBGF(">>> RECVD: %d bytes <<<\n", len);
   if (len != sizeof(PacoteRede))
     return;
 
   PacoteRede pacote;
   memcpy(&pacote, incomingData, sizeof(pacote));
 
-  Serial.printf(">>> PKT TIPO: %d <<<\n", pacote.tipo);
+  DBGF(">>> PKT TIPO: %d <<<\n", pacote.tipo);
 
   if (pacote.tipo == 1) { // Receita Individual
     Receita r = pacote.dados;
@@ -86,7 +86,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
 
     listaAtualizada = true;
   } else if (pacote.tipo == 2) { // RESET TOTAL (Vindo do Master)
-    Serial.println(">>> COMANDO DE RESET TOTAL RECEBIDO <<<");
+    DBGLN(">>> COMANDO DE RESET TOTAL RECEBIDO <<<");
     listaReceitas.clear();
     preferences.clear();                 // Limpa NVS
     preferences.putInt("reset_done", 1); // Mantém flag de reset inicial
@@ -112,14 +112,14 @@ void setupNetworkSlave() {
   if (preferences.getInt("reset_done", 0) == 0) {
     preferences.clear();
     preferences.putInt("reset_done", 1);
-    Serial.println(">>> SLAVE MEMORY RESET (V5) <<<");
+    DBGLN(">>> SLAVE MEMORY RESET (V5) <<<");
   }
 
   carregarReceitasNVS();
 
   // --- INÍCIO CONFIGURAÇÃO OTA ---
   // Tenta conectar ao WiFi do Master para permitir OTA
-  Serial.printf("Tentando conectar ao WiFi: %s\n", SSID_MASTER);
+  DBGF("Tentando conectar ao WiFi: %s\n", SSID_MASTER);
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID_MASTER, OTA_WIFI_PASS);
 
@@ -127,13 +127,12 @@ void setupNetworkSlave() {
   unsigned long startAttempt = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 10000) {
     delay(100);
-    Serial.print(".");
+    DBGF(".");
   }
-  Serial.println();
+  DBGLN("");
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.printf("WiFi Conectado! IP: %s\n",
-                  WiFi.localIP().toString().c_str());
+    DBGF("WiFi Conectado! IP: %s\n", WiFi.localIP().toString().c_str());
 
     // Configura Hostname com parte do MAC para ser único
     String hostname = OTA_HOSTNAME_PREFIX;
@@ -147,52 +146,51 @@ void setupNetworkSlave() {
         .onStart([]() {
           String type =
               (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
-          Serial.println("Start updating " + type);
+          DBGLN("Start updating " + type);
         })
-        .onEnd([]() { Serial.println("\nEnd"); })
+        .onEnd([]() { DBGLN("\nEnd"); })
         .onProgress([](unsigned int progress, unsigned int total) {
-          Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+          DBGF("Progress: %u%%\r", (progress / (total / 100)));
         })
         .onError([](ota_error_t error) {
-          Serial.printf("Error[%u]: ", error);
+          DBGF("Error[%u]: ", error);
           if (error == OTA_AUTH_ERROR)
-            Serial.println("Auth Failed");
+            DBGLN("Auth Failed");
           else if (error == OTA_BEGIN_ERROR)
-            Serial.println("Begin Failed");
+            DBGLN("Begin Failed");
           else if (error == OTA_CONNECT_ERROR)
-            Serial.println("Connect Failed");
+            DBGLN("Connect Failed");
           else if (error == OTA_RECEIVE_ERROR)
-            Serial.println("Receive Failed");
+            DBGLN("Receive Failed");
           else if (error == OTA_END_ERROR)
-            Serial.println("End Failed");
+            DBGLN("End Failed");
         });
 
     ArduinoOTA.begin();
-    Serial.println("OTA Iniciado e Pronto.");
+    DBGLN("OTA Iniciado e Pronto.");
 
     // Se conectou, o canal já está configurado pelo WiFi.begin
     // Mas para garantir o ESP-NOW, vamos verificar o canal
     int32_t channel = WiFi.channel();
-    Serial.printf("Canal WiFi Atual: %d\n", channel);
+    DBGF("Canal WiFi Atual: %d\n", channel);
 
   } else {
-    Serial.println(
-        "Falha ao conectar WiFi. Modo Offline (apenas ESP-NOW via Scan).");
+    DBGLN("Falha ao conectar WiFi. Modo Offline (apenas ESP-NOW via Scan).");
     // Fallback: Tenta encontrar o canal manual se não conectou
     int32_t channel = getWiFiChannel(SSID_MASTER);
     if (channel > 0) {
       esp_wifi_set_promiscuous(true);
       esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
       esp_wifi_set_promiscuous(false);
-      Serial.printf("Canal forçado para %d (Sem conexão WiFi)\n", channel);
+      DBGF("Canal forçado para %d (Sem conexão WiFi)\n", channel);
     } else {
-      Serial.println("Master nao encontrado no Scan! Usando canal padrao (1).");
+      DBGLN("Master nao encontrado no Scan! Usando canal padrao (1).");
     }
   }
   // --- FIM CONFIGURAÇÃO OTA ---
 
   if (esp_now_init() != ESP_OK) {
-    Serial.println("Erro ao iniciar ESP-NOW");
+    DBGLN("Erro ao iniciar ESP-NOW");
     return;
   }
 
@@ -206,10 +204,10 @@ void setupNetworkSlave() {
   peerInfo.encrypt = false;
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    Serial.println("Failed to add peer");
+    DBGLN("Failed to add peer");
   }
 
-  Serial.println("Slave ESP-NOW Ativo.");
+  DBGLN("Slave ESP-NOW Ativo.");
 }
 
 void loopNetworkSlave() {
@@ -221,7 +219,7 @@ void loopNetworkSlave() {
     pct.tipo = 3; // Heartbeat
     // pct.dados = {0}; // Zerar dados opcional
     esp_now_send(broadcastAddr, (uint8_t *)&pct, sizeof(pct));
-    Serial.println(">>> Heartbeat enviado <<<");
+    DBGLN(">>> Heartbeat enviado <<<");
   }
 }
 

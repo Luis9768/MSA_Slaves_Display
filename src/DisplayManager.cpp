@@ -76,7 +76,7 @@ void my_touch_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
 
     static unsigned long lastDebug = 0;
     if (millis() - lastDebug > 200) {
-      Serial.printf("TOUCH: Raw(%d,%d) -> Screen(%d,%d)\n", p.x, p.y, x, y);
+      DBGF("TOUCH: Raw(%d,%d) -> Screen(%d,%d)\n", p.x, p.y, x, y);
       lastDebug = millis();
     }
   } else {

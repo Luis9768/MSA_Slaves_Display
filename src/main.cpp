@@ -21,7 +21,10 @@ int currentRE = 0;
 unsigned long timeProducaoConcluida = 0;
 
 void setup() {
+// Se Debug Habilitado, inicia Serial em alta velocidade para logs
+#if DEBUG_ENABLED
   Serial.begin(115200);
+#endif
 
   // 1. Inicializa Display (LVGL)
   setupDisplay();
@@ -36,6 +39,7 @@ void setup() {
   pinMode(PIN_SENSOR_PRODUTO, INPUT_PULLUP);
 
   Serial.println(">>> SLAVE INICIADO (CAROUSEL + PRINTER) <<<");
+  DBGLN(">>> SLAVE INICIADO (CAROUSEL + PRINTER) <<<");
 }
 
 void loop() {
@@ -51,34 +55,34 @@ void loop() {
 
   // --- 1. GLOBAL: Verifica atualizações de lista (Prioridade Máxima) ---
   if (novaListaDisponivel()) {
-    Serial.println(">>> UPDATE: Lista atualizada pelo Master! <<<");
+    DBGLN(">>> UPDATE: Lista atualizada pelo Master! <<<");
     std::vector<Receita> novaLista = getListaReceitas();
 
-    Serial.printf("DEBUG: EstadoAtual=%d, IDProdutoAtual=%d, TamanhoLista=%d\n",
-                  estadoAtual, idProdutoAtual, novaLista.size());
+    DBGF("DEBUG: EstadoAtual=%d, IDProdutoAtual=%d, TamanhoLista=%d\n",
+         estadoAtual, idProdutoAtual, novaLista.size());
 
     bool produtoAtualExiste = false;
 
     // Se lista vazia, força saída
     if (novaLista.empty()) {
-      Serial.println("DEBUG: Lista VAZIA! Forçando saída.");
+      DBGLN("DEBUG: Lista VAZIA! Forçando saída.");
       idProdutoAtual = 0;
       estadoAtual = 0;
     }
     // Se estamos em produção, verifica se o produto ainda existe
     else if (estadoAtual == 1 && idProdutoAtual > 0) {
-      Serial.println("DEBUG: Verificando se produto atual ainda existe...");
+      DBGLN("DEBUG: Verificando se produto atual ainda existe...");
       for (const auto &r : novaLista) {
         if (r.id == idProdutoAtual) {
           produtoAtualExiste = true;
           receitaAtiva = r;
-          Serial.println("DEBUG: Produto ENCONTRADO na nova lista.");
+          DBGLN("DEBUG: Produto ENCONTRADO na nova lista.");
           break;
         }
       }
 
       if (!produtoAtualExiste) {
-        Serial.println("DEBUG: Produto NAO ENCONTRADO! Removido! Voltando...");
+        DBGLN("DEBUG: Produto NAO ENCONTRADO! Removido! Voltando...");
         idProdutoAtual = 0;
         estadoAtual = 0; // Força volta para carousel
       }
@@ -90,7 +94,7 @@ void loop() {
 
     // Atualiza UI se estiver no Carousel (ou foi forçado a voltar)
     if (estadoAtual == 0) {
-      Serial.println("DEBUG: Atualizando Carousel UI.");
+      DBGLN("DEBUG: Atualizando Carousel UI.");
       mostrarCarouselSlave(novaLista, 0);
     }
 
@@ -100,7 +104,7 @@ void loop() {
 
   if (estadoAtual == 0) { // ESTADO: CAROUSEL
     if (acao > 0) {
-      Serial.printf("Entrando no produto ID %d -> Indo para DATA\n", acao);
+      DBGF("Entrando no produto ID %d -> Indo para DATA\n", acao);
       idProdutoAtual = acao;
       // Busca receita
       std::vector<Receita> lista = getListaReceitas();
@@ -120,8 +124,8 @@ void loop() {
       mostrarCarouselSlave(getListaReceitas(), 0);
     } else if (acao == -3) { // Confirmou DATA
       currentDate = getDadosData();
-      Serial.printf("Data Confirmada: %02d/%02d/%02d -> Indo para RE\n",
-                    currentDate.dia, currentDate.mes, currentDate.ano);
+      DBGF("Data Confirmada: %02d/%02d/%02d -> Indo para RE\n", currentDate.dia,
+           currentDate.mes, currentDate.ano);
       mostrarTelaRE();
       estadoAtual = 2;
     }
@@ -131,7 +135,7 @@ void loop() {
       estadoAtual = 1;
     } else if (acao == -4) { // Confirmou RE
       currentRE = getDadosRE();
-      Serial.printf("RE Confirmado: %d -> Indo para PRODUCAO\n", currentRE);
+      DBGF("RE Confirmado: %d -> Indo para PRODUCAO\n", currentRE);
       contadorProducao = 0;
       mostrarTelaProducao(receitaAtiva);
       estadoAtual = 3;
@@ -139,14 +143,14 @@ void loop() {
   } else if (estadoAtual == 3) { // ESTADO: PRODUÇÃO
     // Se pediu para voltar (ID -1) - Cancelar Produção
     if (acao == -1) {
-      Serial.println("Cancelando producao...");
+      DBGLN("Cancelando producao...");
       estadoAtual = 0;
       idProdutoAtual = 0;
       mostrarCarouselSlave(getListaReceitas(), 0);
     }
     // RESET MANUAL (ID -10)
     else if (acao == -10) {
-      Serial.println(">>> RESET MANUAL DE CONTAGEM <<<");
+      DBGLN(">>> RESET MANUAL DE CONTAGEM <<<");
       contadorProducao = 0;
       atualizarContador(0, receitaAtiva.quantidade);
     }
@@ -155,7 +159,7 @@ void loop() {
   } else if (estadoAtual == 4) { // ESTADO: CONCLUIDA (WAIT)
     if (millis() - timeProducaoConcluida > 3000) {
       // Reinicia contagem automaticamente
-      Serial.println(">>> Reiniciando contagem automatico <<<");
+      DBGLN(">>> Reiniciando contagem automatico <<<");
       contadorProducao = 0;
       esconderMensagemProducaoConcluida();
       atualizarContador(0, receitaAtiva.quantidade);
@@ -163,13 +167,15 @@ void loop() {
     }
   }
 
-  // LOGICA SCANNER GLOBAL (Só ativa no estado 3)
+// LOGICA SCANNER GLOBAL (Só ativa no estado 3)
+// [IMPORTANT] Se a impressora estiver no Serial, o Scanner USB nao funcionara.
+#if DEBUG_ENABLED
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
     input.trim(); // Remove \r \n spaces
 
     if (input.length() > 0) {
-      Serial.printf(">>> SCANNER LEU: [%s] <<<\n", input.c_str());
+      DBGF(">>> SCANNER LEU: [%s] <<<\n", input.c_str());
 
       if (estadoAtual == 3) {
         // Validação: É "1" (Teste), é o Codigo ou é o Barcode?
@@ -179,12 +185,12 @@ void loop() {
 
         if (valido) {
           if (contadorProducao >= receitaAtiva.quantidade) {
-            Serial.println(">>> JA ESTA CHEIO! <<<");
+            DBGLN(">>> JA ESTA CHEIO! <<<");
           } else {
             contadorProducao++;
             atualizarContador(contadorProducao, receitaAtiva.quantidade);
-            Serial.printf(">>> SUCESSO: %d/%d <<<\n", contadorProducao,
-                          receitaAtiva.quantidade);
+            DBGF(">>> SUCESSO: %d/%d <<<\n", contadorProducao,
+                 receitaAtiva.quantidade);
 
             // Imprime Etiqueta
             imprimirEtiqueta(receitaAtiva, contadorProducao, currentDate,
@@ -192,21 +198,21 @@ void loop() {
 
             // Verifica se concluiu
             if (contadorProducao >= receitaAtiva.quantidade) {
-              Serial.println(">>> PRODUCAO CONCLUIDA! <<<");
+              DBGLN(">>> PRODUCAO CONCLUIDA! <<<");
               mostrarMensagemProducaoConcluida();
               timeProducaoConcluida = millis();
               estadoAtual = 4;
             }
           }
         } else {
-          Serial.println(
-              ">>> ERRO: CODIGO DE BARRAS INVALIDO PARA ESTE PRODUTO! <<<");
+          DBGLN(">>> ERRO: CODIGO DE BARRAS INVALIDO PARA ESTE PRODUTO! <<<");
         }
       } else {
-        Serial.println(">>> ERRO: NAO ESTA NA TELA DE PRODUCAO <<<");
+        DBGLN(">>> ERRO: NAO ESTA NA TELA DE PRODUCAO <<<");
       }
     }
   }
+#endif
 
   // LOGICA SENSOR FISICO (Simulação ou Sensor Real NPN)
   static int lastSensorState = HIGH;
@@ -214,15 +220,15 @@ void loop() {
 
   if (estadoAtual == 3 && lastSensorState == HIGH && sensorState == LOW) {
     // Borda de descida detectada (Fio encostou no GND)
-    Serial.println(">>> SENSOR FISICO ACIONADO! <<<");
+    DBGLN(">>> SENSOR FISICO ACIONADO! <<<");
 
     if (contadorProducao >= receitaAtiva.quantidade) {
-      Serial.println(">>> JA ESTA CHEIO! <<<");
+      DBGLN(">>> JA ESTA CHEIO! <<<");
     } else {
       contadorProducao++;
       atualizarContador(contadorProducao, receitaAtiva.quantidade);
-      Serial.printf(">>> SUCESSO (SENSOR): %d/%d <<<\n", contadorProducao,
-                    receitaAtiva.quantidade);
+      DBGF(">>> SUCESSO (SENSOR): %d/%d <<<\n", contadorProducao,
+           receitaAtiva.quantidade);
 
       imprimirEtiqueta(receitaAtiva, contadorProducao, currentDate, currentRE);
 
