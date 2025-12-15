@@ -47,7 +47,17 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
   constexpr size_t ZPL_BUFFER_SIZE = 2048;
   char zplBuffer[ZPL_BUFFER_SIZE];
 
-  // CODIGO ORIGINAL (RESTAURADO)
+  // Prepara a seção do Codigo de Barras (Condicional)
+  char barcodeSection[256] = "";
+  // Se tiver barcode preenchido (tamanho > 0), monta o ZPL.
+  // Se nao tiver, barcodeSection continua vazio "" e nada é impresso nessa
+  // parte.
+  if (r.barcode[0] != '\0') {
+    snprintf(barcodeSection, sizeof(barcodeSection),
+             "^BY3,2,85^FT329,423^BEI,,Y,N\r\n^FD%s^FS\r\n", r.barcode);
+  }
+
+  // CODIGO ORIGINAL (RESTAURADO E ADAPTADO)
   int escrito = snprintf(
       zplBuffer, ZPL_BUFFER_SIZE,
       "CT~~CD,~CC^~CT~\r\n"
@@ -81,9 +91,8 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
       "EedRfwAl7WoT:0C11\r\n"
       "^FT375,547^A0I,32,31^FH\\^FDCODIGO: %06lu^FS\r\n"
       "^FT375,523^A0I,20,19^FH\\^FD%s^FS\r\n"
-      "^BY3,2,85^FT329,423^BEI,,Y,N\r\n"
-      "^FD%s^FS\r\n"
-      "^FO13,385^GB371,0,8^FS\r\n"
+      "%s" // <-- BARCODE INSERTION POINT (Antes era Hardcoded)
+      "^FO13,365^GB371,0,8^FS\r\n"
       "^FT356,330^A0I,31,31^FH\\^FDFAB:^FS\r\n"
       "^SL0\r\n"
       "^FT287,330^A0I,31,31\r\n"
@@ -95,8 +104,9 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
       "^FT188,233^A0I,31,31^FH\\^FD%03lu^FS\r\n"
       "^PQ1,0,1,Y^XZ\r\n",
       (unsigned long)codigoProd, r.descricao,
-      r.barcode[0] ? r.barcode : "7890000000000", (unsigned int)dia,
-      (unsigned int)mes, (unsigned int)ano, reValor, (unsigned long)contador);
+      barcodeSection, // Passamos o bloco inteiro (ou vazio)
+      (unsigned int)dia, (unsigned int)mes, (unsigned int)ano, reValor,
+      (unsigned long)contador);
 
   if (escrito > 0 && escrito < (int)ZPL_BUFFER_SIZE) {
     // Envia para impressora

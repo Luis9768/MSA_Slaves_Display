@@ -5,6 +5,8 @@
 #include <XPT2046_Touchscreen.h>
 #include <lvgl.h>
 
+LV_IMG_DECLARE(AIPLAN_LOGO_FINAL_2020);
+
 TFT_eSPI tft = TFT_eSPI();
 SPIClass touchSpi(VSPI);
 XPT2046_Touchscreen touch(TOUCH_XPT_CS, TOUCH_XPT_IRQ);
@@ -217,19 +219,21 @@ void mostrarCarouselSlave(std::vector<Receita> lista, int indice) {
     lv_obj_center(lblEntrar);
 
   } else {
-    // TELA VAZIA
-    lv_obj_t *lblMSA = lv_label_create(lv_scr_act());
-    lv_label_set_text(lblMSA, "MSA");
-    lv_obj_align(lblMSA, LV_ALIGN_TOP_MID, 0, 40);
-    lv_obj_set_style_text_font(lblMSA, &lv_font_montserrat_22, 0);
-    lv_obj_set_style_text_color(lblMSA, lv_palette_main(LV_PALETTE_RED), 0);
+    // TELA VAZIA (Mostrar Logo)
+    lv_obj_t *logo = lv_img_create(lv_scr_act());
+    lv_img_set_src(logo, &AIPLAN_LOGO_FINAL_2020);
+    lv_obj_align(logo, LV_ALIGN_CENTER, 0, -20);
+
+    // O logo é muito grande (974px), tela tem 240px.
+    // Zoom 256 = 100%. Queremos ~220px.
+    // 220 / 974 = 0.225 -> 256 * 0.225 = ~58
+    lv_img_set_zoom(logo, 60);
 
     lv_obj_t *lblVazio = lv_label_create(lv_scr_act());
-    lv_label_set_text(lblVazio,
-                      "Nenhum produto cadastrado.\nEnvie a lista pelo Master.");
-    lv_obj_set_style_text_align(lblVazio, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_center(lblVazio);
+    lv_label_set_text(lblVazio, "Aguardando Lista...");
+    lv_obj_align(lblVazio, LV_ALIGN_BOTTOM_MID, 0, -60);
     lv_obj_set_style_text_color(lblVazio, lv_palette_main(LV_PALETTE_GREY), 0);
+    lv_obj_set_style_text_font(lblVazio, &lv_font_montserrat_14, 0);
   }
 }
 
@@ -360,27 +364,16 @@ void event_handler_num_data(lv_event_t *e) {
     }
 
     // Formata o display: DD/MM/AA
-    char dd[3] = {0}, mm[3] = {0}, aa[3] = {0};
-    int len = strlen(dataBuffer);
-
-    if (len >= 2)
-      strncpy(dd, dataBuffer, 2);
-    if (len >= 4)
-      strncpy(mm, dataBuffer + 2, 2);
-    if (len >= 6)
-      strncpy(aa, dataBuffer + 4, 2);
-
+    // Formata o display: DD/MM/AA
     char fmt[16] = "";
-    if (len > 0)
-      strncat(fmt, dd, 2);
-    if (len >= 2)
-      strcat(fmt, "/");
-    if (len > 2)
-      strncat(fmt, mm, 2);
-    if (len >= 4)
-      strcat(fmt, "/");
-    if (len > 4)
-      strncat(fmt, aa, 2);
+    int len = strlen(dataBuffer);
+    for (int i = 0; i < len; i++) {
+      if (i == 2 || i == 4) {
+        strcat(fmt, "/");
+      }
+      char tmp[2] = {dataBuffer[i], '\0'};
+      strcat(fmt, tmp);
+    }
 
     lv_label_set_text(lblDataDisplay, fmt);
   }
