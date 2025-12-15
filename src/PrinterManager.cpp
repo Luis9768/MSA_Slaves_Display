@@ -60,34 +60,36 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
   }
 
   // CODIGO ORIGINAL (RESTAURADO E ADAPTADO)
-  int escrito = snprintf(zplBuffer, ZPL_BUFFER_SIZE,
-                         // HEADER SIMPLIFICADO (Para evitar conflito de config)
-                         "^XA\r\n"
-                         "^PW400\r\n"
-                         "^LL0599\r\n"
-                         "^CI28\r\n" // UTF-8
+  int escrito = snprintf(
+      zplBuffer, ZPL_BUFFER_SIZE,
+      // HEADER SIMPLIFICADO
+      "^XA\r\n"
+      "^PW400\r\n"
+      "^LL0599\r\n"
+      // Removido ^CI28 (UTF-8) para compatibilidade maxima
 
-                         // LOGO MSA (Texto Simples)
-                         "^FO50,30^A0N,80,80^FDMSA^FS\r\n"
+      // LOGO MSA (Texto Simples)
+      "^FO50,30^A0N,80,80^FDMSA^FS\r\n"
 
-                         "^FT375,547^A0I,32,31^FH\\^FDCODIGO: %06lu^FS\r\n"
-                         "^FT375,523^A0I,20,19^FH\\^FD%s^FS\r\n"
-                         "%s" // Barcode
-                         "^FO13,365^GB371,0,8^FS\r\n"
-                         "^FT356,330^A0I,31,31^FH\\^FDFAB:^FS\r\n"
-                         "^SL0\r\n"
-                         "^FT287,330^A0I,31,31\r\n"
-                         "^FC%%,{,#\r\n"
-                         "^FD%02u/%02u/%02u^FS\r\n"
-                         "^FT341,287^A0I,31,31^FH\\^FDRE:^FS\r\n"
-                         "^FT287,287^A0I,31,31^FH\\^FD%04u^FS\r\n"
-                         "^FT372,233^A0I,31,31^FH\\^FDSEQUENCIAL:^FS\r\n"
-                         "^FT188,233^A0I,31,31^FH\\^FD%03lu^FS\r\n"
-                         "^PQ1,0,1,Y^XZ\r\n",
-                         (unsigned long)codigoProd, r.descricao,
-                         barcodeSection, // Passamos o bloco inteiro (ou vazio)
-                         (unsigned int)dia, (unsigned int)mes,
-                         (unsigned int)ano, reValor, (unsigned long)contador);
+      "^FT375,547^A0I,32,31^FH\\^FDCODIGO: %06lu^FS\r\n"
+      "^FT375,523^A0I,20,19^FH\\^FD%s^FS\r\n"
+      "%s" // Barcode
+      "^FO13,365^GB371,0,8^FS\r\n"
+      "^FT356,330^A0I,31,31^FH\\^FDFAB:^FS\r\n"
+
+      // Data - Removidos comandos de relogio (^SL, ^FC) que podem travar
+      "^FT287,330^A0I,31,31\r\n"
+      "^FD%02u/%02u/%02u^FS\r\n"
+
+      "^FT341,287^A0I,31,31^FH\\^FDRE:^FS\r\n"
+      "^FT287,287^A0I,31,31^FH\\^FD%04u^FS\r\n"
+      "^FT372,233^A0I,31,31^FH\\^FDSEQUENCIAL:^FS\r\n"
+      "^FT188,233^A0I,31,31^FH\\^FD%03lu^FS\r\n"
+      "^PQ1,0,1,Y^XZ\r\n",
+      (unsigned long)codigoProd, r.descricao,
+      barcodeSection, // Passamos o bloco inteiro (ou vazio)
+      (unsigned int)dia, (unsigned int)mes, (unsigned int)ano, reValor,
+      (unsigned long)contador);
 
   if (escrito > 0 && escrito < (int)ZPL_BUFFER_SIZE) {
     // Envia para impressora
