@@ -369,15 +369,6 @@ void mostrarTelaProducao(Receita r) {
   lv_obj_center(lblReset);
 }
 
-void atualizarContador(int qtd, int meta) {
-  if (lblContador) {
-    lv_label_set_text_fmt(lblContador, "%d", qtd);
-  }
-  if (barProducao) {
-    lv_bar_set_value(barProducao, qtd, LV_ANIM_ON);
-  }
-}
-
 // --- TELA DE DATA (NUMERICO) ---
 char dataBuffer[10] = "";
 
