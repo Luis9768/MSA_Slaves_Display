@@ -163,7 +163,7 @@ void loop() {
   // LOGICA SCANNER GLOBAL (Só ativa no estado 3)
   if (Serial.available()) {
     char c = Serial.read();
-    if (c != '\n' && c != '\r') {
+    if (c == '1') {
       if (estadoAtual == 3) {
         if (contadorProducao >= receitaAtiva.quantidade) {
           Serial.println(">>> JA ESTA CHEIO! <<<");
