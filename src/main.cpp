@@ -180,11 +180,6 @@ void loop() {
       DBGF(">>> SCANNER LEU: [%s] <<<\n", input.c_str());
 #endif
 
-      // VISUAL DEBUG: Mostra o que leu na tela
-      char debugMsg[64];
-      snprintf(debugMsg, sizeof(debugMsg), "Lido: %s", input.c_str());
-      atualizarDebugInfo(debugMsg);
-
       if (estadoAtual == 3) {
         // Validação: É "1" (Teste), é o Codigo ou é o Barcode?
         bool valido = (input == "1") ||

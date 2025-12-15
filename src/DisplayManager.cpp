@@ -247,14 +247,6 @@ void event_handler_btn_reset_click(lv_event_t *e) {
 
 // --- TELA PRODUCAO UPDATE ---
 
-lv_obj_t *lblDebugScanner = NULL; // Global para debug
-
-void atualizarDebugInfo(const char *msg) {
-  if (lblDebugScanner && lv_obj_is_valid(lblDebugScanner)) {
-    lv_label_set_text(lblDebugScanner, msg);
-  }
-}
-
 void atualizarContador(int qtd, int meta) {
   if (lblContador) {
     lv_label_set_text_fmt(lblContador, "%d", qtd);
@@ -268,7 +260,6 @@ void atualizarContador(int qtd, int meta) {
 void mostrarTelaProducao(Receita r) {
   lv_obj_clean(lv_scr_act());
   recriarDebugCursor();
-  lblDebugScanner = NULL; // Reset handle
 
   lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xF0F0F0), 0);
 
@@ -346,15 +337,6 @@ void mostrarTelaProducao(Receita r) {
   lv_label_set_text_fmt(lblMeta, "META: %d", r.quantidade);
   lv_obj_align(lblMeta, LV_ALIGN_BOTTOM_MID, 0, -40);
   lv_obj_set_style_text_color(lblMeta, lv_palette_main(LV_PALETTE_GREY), 0);
-
-  // LABEL DEBUG (SCANNER)
-  // Mostra o que chegou na Serial pra gente saber se está lendo
-  lblDebugScanner = lv_label_create(lv_scr_act());
-  lv_label_set_text(lblDebugScanner, "Scanner: Aguardando...");
-  lv_obj_align(lblDebugScanner, LV_ALIGN_BOTTOM_RIGHT, -10, -50);
-  lv_obj_set_style_text_font(lblDebugScanner, &lv_font_montserrat_14, 0);
-  lv_obj_set_style_text_color(lblDebugScanner, lv_palette_main(LV_PALETTE_BLUE),
-                              0);
 
   // Botão ZERAR
   lv_obj_t *btnReset = lv_btn_create(lv_scr_act());
