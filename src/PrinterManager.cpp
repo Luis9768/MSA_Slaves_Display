@@ -97,16 +97,14 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
       (unsigned long)codigoProd, r.descricao,
       r.barcode[0] ? r.barcode : "7890000000000", (unsigned int)dia,
       (unsigned int)mes, (unsigned int)ano, reValor, (unsigned long)contador);
-  */
 
-      if (escrito > 0 && escrito < (int)ZPL_BUFFER_SIZE) {
+  if (escrito > 0 && escrito < (int)ZPL_BUFFER_SIZE) {
     // Envia para impressora
     PRINTER_OBJ.write(reinterpret_cast<const uint8_t *>(zplBuffer),
                       (size_t)escrito);
     PRINTER_OBJ.flush();
     DBGF(">>> ETIQUETA IMPRESSA: %s (Seq: %d) <<<\n", r.descricao, contador);
-  }
-  else {
+  } else {
     DBGLN("Erro ao montar ZPL!");
   }
 }
