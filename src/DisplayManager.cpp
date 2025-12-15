@@ -356,7 +356,22 @@ void event_handler_num_data(lv_event_t *e) {
         dataBuffer[strlen(dataBuffer) - 1] = '\0';
     } else if (strcmp(txt, "OK") == 0) {
       if (strlen(dataBuffer) == 6) { // Exige 6 digitos DDMMAA
-        produtoSelecionado = -3;     // Confirmou DATA
+        char dd[3] = {dataBuffer[0], dataBuffer[1], 0};
+        char mm[3] = {dataBuffer[2], dataBuffer[3], 0};
+        int d = atoi(dd);
+        int m = atoi(mm);
+
+        bool diaValido = (d >= 1 && d <= 31);
+        bool mesValido = (m >= 1 && m <= 12);
+
+        if (diaValido && mesValido) {
+          produtoSelecionado = -3; // Confirmou DATA
+        } else {
+          // Data Invalida: Reseta
+          memset(dataBuffer, 0, sizeof(dataBuffer));
+          lv_label_set_text(lblDataDisplay, "DATA INVALIDA");
+          return; // Sai para não desenhar o texto formatado embaixo agora
+        }
       }
     } else {
       if (strlen(dataBuffer) < 6) {
@@ -365,18 +380,21 @@ void event_handler_num_data(lv_event_t *e) {
     }
 
     // Formata o display: DD/MM/AA
-    // Formata o display: DD/MM/AA
-    char fmt[16] = "";
-    int len = strlen(dataBuffer);
-    for (int i = 0; i < len; i++) {
-      if (i == 2 || i == 4) {
-        strcat(fmt, "/");
+    if (strlen(dataBuffer) == 0 && strcmp(txt, "OK") == 0) {
+      // Se limpamos buffer por erro, nao faz nada, deixa "DATA INVALIDA"
+      // aparecer
+    } else {
+      char fmt[16] = "";
+      int len = strlen(dataBuffer);
+      for (int i = 0; i < len; i++) {
+        if (i == 2 || i == 4) {
+          strcat(fmt, "/");
+        }
+        char tmp[2] = {dataBuffer[i], '\0'};
+        strcat(fmt, tmp);
       }
-      char tmp[2] = {dataBuffer[i], '\0'};
-      strcat(fmt, tmp);
+      lv_label_set_text(lblDataDisplay, fmt);
     }
-
-    lv_label_set_text(lblDataDisplay, fmt);
   }
 }
 

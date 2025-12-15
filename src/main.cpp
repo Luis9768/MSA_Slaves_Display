@@ -167,15 +167,18 @@ void loop() {
     }
   }
 
-// LOGICA SCANNER GLOBAL (Só ativa no estado 3)
-// [IMPORTANT] Se a impressora estiver no Serial, o Scanner USB nao funcionara.
-#if DEBUG_ENABLED
+  // LOGICA SCANNER GLOBAL (Só ativa no estado 3)
+  // [IMPORTANT] Se a impressora estiver no Serial, o Scanner deve estar na
+  // mesma velocidade (9600 default)
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
     input.trim(); // Remove \r \n spaces
 
     if (input.length() > 0) {
+// Se debug estiver OFF, não temos como logar o que chegou, mas processamos.
+#if DEBUG_ENABLED
       DBGF(">>> SCANNER LEU: [%s] <<<\n", input.c_str());
+#endif
 
       if (estadoAtual == 3) {
         // Validação: É "1" (Teste), é o Codigo ou é o Barcode?
@@ -185,12 +188,16 @@ void loop() {
 
         if (valido) {
           if (contadorProducao >= receitaAtiva.quantidade) {
+#if DEBUG_ENABLED
             DBGLN(">>> JA ESTA CHEIO! <<<");
+#endif
           } else {
             contadorProducao++;
             atualizarContador(contadorProducao, receitaAtiva.quantidade);
+#if DEBUG_ENABLED
             DBGF(">>> SUCESSO: %d/%d <<<\n", contadorProducao,
                  receitaAtiva.quantidade);
+#endif
 
             // Imprime Etiqueta
             imprimirEtiqueta(receitaAtiva, contadorProducao, currentDate,
@@ -198,21 +205,26 @@ void loop() {
 
             // Verifica se concluiu
             if (contadorProducao >= receitaAtiva.quantidade) {
+#if DEBUG_ENABLED
               DBGLN(">>> PRODUCAO CONCLUIDA! <<<");
+#endif
               mostrarMensagemProducaoConcluida();
               timeProducaoConcluida = millis();
               estadoAtual = 4;
             }
           }
         } else {
+#if DEBUG_ENABLED
           DBGLN(">>> ERRO: CODIGO DE BARRAS INVALIDO PARA ESTE PRODUTO! <<<");
+#endif
         }
       } else {
+#if DEBUG_ENABLED
         DBGLN(">>> ERRO: NAO ESTA NA TELA DE PRODUCAO <<<");
+#endif
       }
     }
   }
-#endif
 
   // LOGICA SENSOR FISICO (Simulação ou Sensor Real NPN)
   static int lastSensorState = HIGH;
