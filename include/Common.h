@@ -12,7 +12,7 @@ struct Receita {
 };
 
 struct PacoteRede {
-  int tipo;
+  int tipo; // 1=Receita, 2=Reset, 3=Heartbeat
   Receita dados;
 };
 
