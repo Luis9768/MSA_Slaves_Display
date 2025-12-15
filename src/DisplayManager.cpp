@@ -219,15 +219,16 @@ void mostrarCarouselSlave(std::vector<Receita> lista, int indice) {
     lv_obj_center(lblEntrar);
 
   } else {
-    // TELA VAZIA (Mostrar Logo)
-    lv_obj_t *logo = lv_img_create(lv_scr_act());
-    lv_img_set_src(logo, &AIPLAN_LOGO_FINAL_2020);
-    lv_obj_align(logo, LV_ALIGN_CENTER, 0, -20);
+    // TELA VAZIA
+    // IMAGE LOGO
+    lv_obj_t *imgLogo = lv_img_create(lv_scr_act());
+    lv_img_set_src(imgLogo, &AIPLAN_LOGO_FINAL_2020);
+    lv_obj_align(imgLogo, LV_ALIGN_TOP_MID, 0, 60); // Ajuste vertical
 
-    // O logo é muito grande (974px), tela tem 240px.
-    // Zoom 256 = 100%. Queremos ~220px.
-    // 220 / 974 = 0.225 -> 256 * 0.225 = ~58
-    lv_img_set_zoom(logo, 60);
+    // Recolorir para VERMELHO (Design)
+    // Como é ALPHA_1BIT, podemos usar style_img_recolor
+    lv_obj_set_style_img_recolor_opa(imgLogo, LV_OPA_COVER, 0);
+    lv_obj_set_style_img_recolor(imgLogo, lv_palette_main(LV_PALETTE_RED), 0);
 
     lv_obj_t *lblVazio = lv_label_create(lv_scr_act());
     lv_label_set_text(lblVazio, "Aguardando Lista...");
