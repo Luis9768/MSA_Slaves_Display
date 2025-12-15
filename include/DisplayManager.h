@@ -23,6 +23,7 @@ void mostrarTelaProducao(Receita r);
 
 // Atualiza o número no contador
 void atualizarContador(int qtd, int meta);
+void atualizarDebugInfo(const char *msg); // Nova funcao de debug
 
 // Mostra mensagem de Produção Concluída
 void mostrarMensagemProducaoConcluida();

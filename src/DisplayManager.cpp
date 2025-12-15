@@ -246,11 +246,37 @@ void event_handler_btn_reset_click(lv_event_t *e) {
 }
 
 // --- TELA PRODUCAO UPDATE ---
+
+lv_obj_t *lblDebugScanner = NULL; // Global para debug
+
+void atualizarDebugInfo(const char *msg) {
+  if (lblDebugScanner && lv_obj_is_valid(lblDebugScanner)) {
+    lv_label_set_text(lblDebugScanner, msg);
+  }
+}
+
+void atualizarContador(int qtd, int meta) {
+  if (lblContador) {
+    lv_label_set_text_fmt(lblContador, "%d", qtd);
+  }
+  if (barProducao) {
+    lv_bar_set_value(barProducao, qtd, LV_ANIM_ON);
+  }
+}
+
+// --- TELA PRODUCAO UPDATE ---
 void mostrarTelaProducao(Receita r) {
   lv_obj_clean(lv_scr_act());
   recriarDebugCursor();
+  lblDebugScanner = NULL; // Reset handle
 
   lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xF0F0F0), 0);
+
+  // ... (existing code for header) ...
+  // Copying header creation for context, but using a targeted replace for the
+  // full function is safer Wait, the user has 300+ lines in this file. I should
+  // only replace the function body or significant parts. Let's rely on the fact
+  // that I am replacing the `mostrarTelaProducao` function logic.
 
   // Cabeçalho
   lv_obj_t *header = lv_obj_create(lv_scr_act());
@@ -259,7 +285,7 @@ void mostrarTelaProducao(Receita r) {
   lv_obj_align(header, LV_ALIGN_TOP_MID, 0, 0);
   lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
-  // ID (Badge Redondo ou texto pequeno Canto Esquerdo)
+  // ID
   lv_obj_t *bgId = lv_obj_create(header);
   lv_obj_set_size(bgId, 40, 30);
   lv_obj_align(bgId, LV_ALIGN_TOP_LEFT, -10, -5);
@@ -273,10 +299,10 @@ void mostrarTelaProducao(Receita r) {
   lv_obj_set_style_text_color(lblCod, lv_palette_main(LV_PALETTE_RED), 0);
   lv_obj_set_style_text_font(lblCod, &lv_font_montserrat_14, 0);
 
-  // Descrição do Produto
+  // Descrição
   lv_obj_t *lblDesc = lv_label_create(header);
   lv_label_set_long_mode(lblDesc, LV_LABEL_LONG_SCROLL_CIRCULAR);
-  lv_obj_set_width(lblDesc, 130); // Limita largura
+  lv_obj_set_width(lblDesc, 130);
   lv_label_set_text(lblDesc, r.descricao);
   lv_obj_align(lblDesc, LV_ALIGN_LEFT_MID, 35, 0);
   lv_obj_set_style_text_color(lblDesc, lv_color_white(), 0);
@@ -321,7 +347,16 @@ void mostrarTelaProducao(Receita r) {
   lv_obj_align(lblMeta, LV_ALIGN_BOTTOM_MID, 0, -40);
   lv_obj_set_style_text_color(lblMeta, lv_palette_main(LV_PALETTE_GREY), 0);
 
-  // Botão ZERAR (Novo) - Canto Inferior Esquerdo
+  // LABEL DEBUG (SCANNER)
+  // Mostra o que chegou na Serial pra gente saber se está lendo
+  lblDebugScanner = lv_label_create(lv_scr_act());
+  lv_label_set_text(lblDebugScanner, "Scanner: Aguardando...");
+  lv_obj_align(lblDebugScanner, LV_ALIGN_BOTTOM_RIGHT, -10, -50);
+  lv_obj_set_style_text_font(lblDebugScanner, &lv_font_montserrat_14, 0);
+  lv_obj_set_style_text_color(lblDebugScanner, lv_palette_main(LV_PALETTE_BLUE),
+                              0);
+
+  // Botão ZERAR
   lv_obj_t *btnReset = lv_btn_create(lv_scr_act());
   lv_obj_set_size(btnReset, 80, 40);
   lv_obj_align(btnReset, LV_ALIGN_BOTTOM_LEFT, 10, -10);
