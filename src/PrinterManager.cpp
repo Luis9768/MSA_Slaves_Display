@@ -47,17 +47,7 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
   constexpr size_t ZPL_BUFFER_SIZE = 2048;
   char zplBuffer[ZPL_BUFFER_SIZE];
 
-  // --- TESTE SIMPLIFICADO ---
-  // Se o codigo complexo falhar, usamos este simples
-  int escrito = snprintf(zplBuffer, ZPL_BUFFER_SIZE,
-                         "^XA"
-                         "^FO50,50^A0N,50,50^FDTESTE DE COMUNICACAO^FS"
-                         "^FO50,150^A0N,30,30^FDPRODUTO: %s^FS"
-                         "^FO50,200^A0N,30,30^FDSEQ: %d^FS"
-                         "^XZ",
-                         r.descricao, contador);
-
-  /* CODIGO ORIGINAL (COMENTADO PARA TESTE)
+  // CODIGO ORIGINAL (RESTAURADO)
   int escrito = snprintf(
       zplBuffer, ZPL_BUFFER_SIZE,
       "CT~~CD,~CC^~CT~\r\n"
@@ -107,15 +97,16 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
       (unsigned long)codigoProd, r.descricao,
       r.barcode[0] ? r.barcode : "7890000000000", (unsigned int)dia,
       (unsigned int)mes, (unsigned int)ano, reValor, (unsigned long)contador);
-      */
+  */
 
-  if (escrito > 0 && escrito < (int)ZPL_BUFFER_SIZE) {
+      if (escrito > 0 && escrito < (int)ZPL_BUFFER_SIZE) {
     // Envia para impressora
     PRINTER_OBJ.write(reinterpret_cast<const uint8_t *>(zplBuffer),
                       (size_t)escrito);
     PRINTER_OBJ.flush();
     DBGF(">>> ETIQUETA IMPRESSA: %s (Seq: %d) <<<\n", r.descricao, contador);
-  } else {
+  }
+  else {
     DBGLN("Erro ao montar ZPL!");
   }
 }

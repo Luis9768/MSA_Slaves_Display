@@ -17,7 +17,7 @@
 // ATENCAO: Debug via USB sera DESATIVADO pois a porta sera usada pela
 // impressora
 #define PRINTER_USES_MAIN_SERIAL 1
-#define PRINTER_BAUD 115200
+#define PRINTER_BAUD 9600
 
 // Se a impressora usa a Serial principal, nao podemos ter debug
 #if PRINTER_USES_MAIN_SERIAL
