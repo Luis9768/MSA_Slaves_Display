@@ -170,6 +170,8 @@ void loop() {
         } else {
           contadorProducao++;
           atualizarContador(contadorProducao, receitaAtiva.quantidade);
+          Serial.printf(">>> MANUAL: %d/%d <<<\n", contadorProducao,
+                        receitaAtiva.quantidade); // Feedback para teste
           // Imprime usando Data e RE globais
           imprimirEtiqueta(receitaAtiva, contadorProducao, currentDate,
                            currentRE);
