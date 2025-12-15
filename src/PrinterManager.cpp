@@ -29,6 +29,10 @@ void setupPrinter() {
 #endif
 
   DBGLN(">>> PrinterManager: Iniciada");
+
+  // TESTE DE IMPRESSAO AUTOMATICO NO BOOT
+  DBGLN(">>> ENVIANDO TESTE DE IMPRESSAO SIMPLES...");
+  PRINTER_OBJ.println("^XA^FO50,50^A0N,50,50^FDTESTE DE IMPRESSAO^FS^XZ");
 }
 
 void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
@@ -43,8 +47,8 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
 
   unsigned long codigoProd = atol(r.codigo);
 
-  // Buffer para o comando ZPL
-  constexpr size_t ZPL_BUFFER_SIZE = 2048;
+  // Buffer para o comando ZPL (Aumentado para suportar Logo)
+  constexpr size_t ZPL_BUFFER_SIZE = 8192;
   char zplBuffer[ZPL_BUFFER_SIZE];
 
   // Prepara a seção do Codigo de Barras (Condicional)
