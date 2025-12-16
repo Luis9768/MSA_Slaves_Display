@@ -37,19 +37,15 @@ void carregarReceitasNVS() {
     }
   }
   listaAtualizada = true;
-  DBGF("Carregadas %d receitas da NVS\n", listaReceitas.size());
 }
 
 // Callback quando recebe dados
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
-  DBGF(">>> RECVD: %d bytes <<<\n", len);
   if (len != sizeof(PacoteRede))
     return;
 
   PacoteRede pacote;
   memcpy(&pacote, incomingData, sizeof(pacote));
-
-  DBGF(">>> PKT TIPO: %d <<<\n", pacote.tipo);
 
   if (pacote.tipo == 1) { // Receita Individual
     Receita r = pacote.dados;
@@ -86,7 +82,6 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
 
     listaAtualizada = true;
   } else if (pacote.tipo == 2) { // RESET TOTAL (Vindo do Master)
-    DBGLN(">>> COMANDO DE RESET TOTAL RECEBIDO <<<");
     listaReceitas.clear();
     preferences.clear();                 // Limpa NVS
     preferences.putInt("reset_done", 1); // Mantém flag de reset inicial
@@ -112,14 +107,12 @@ void setupNetworkSlave() {
   if (preferences.getInt("reset_done", 0) == 0) {
     preferences.clear();
     preferences.putInt("reset_done", 1);
-    DBGLN(">>> SLAVE MEMORY RESET (V5) <<<");
   }
 
   carregarReceitasNVS();
 
   // --- INÍCIO CONFIGURAÇÃO OTA ---
   // Tenta conectar ao WiFi do Master para permitir OTA
-  DBGF("Tentando conectar ao WiFi: %s\n", SSID_MASTER);
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID_MASTER, OTA_WIFI_PASS);
 
@@ -127,12 +120,9 @@ void setupNetworkSlave() {
   unsigned long startAttempt = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 10000) {
     delay(100);
-    DBGF(".");
   }
-  DBGLN("");
 
   if (WiFi.status() == WL_CONNECTED) {
-    DBGF("WiFi Conectado! IP: %s\n", WiFi.localIP().toString().c_str());
 
     // Configura Hostname com parte do MAC para ser único
     String hostname = OTA_HOSTNAME_PREFIX;
@@ -146,51 +136,30 @@ void setupNetworkSlave() {
         .onStart([]() {
           String type =
               (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
-          DBGLN("Start updating " + type);
         })
-        .onEnd([]() { DBGLN("\nEnd"); })
-        .onProgress([](unsigned int progress, unsigned int total) {
-          DBGF("Progress: %u%%\r", (progress / (total / 100)));
-        })
-        .onError([](ota_error_t error) {
-          DBGF("Error[%u]: ", error);
-          if (error == OTA_AUTH_ERROR)
-            DBGLN("Auth Failed");
-          else if (error == OTA_BEGIN_ERROR)
-            DBGLN("Begin Failed");
-          else if (error == OTA_CONNECT_ERROR)
-            DBGLN("Connect Failed");
-          else if (error == OTA_RECEIVE_ERROR)
-            DBGLN("Receive Failed");
-          else if (error == OTA_END_ERROR)
-            DBGLN("End Failed");
-        });
+        .onEnd([]() {})
+        .onProgress([](unsigned int progress, unsigned int total) {})
+        .onError([](ota_error_t error) {});
 
     ArduinoOTA.begin();
-    DBGLN("OTA Iniciado e Pronto.");
 
     // Se conectou, o canal já está configurado pelo WiFi.begin
     // Mas para garantir o ESP-NOW, vamos verificar o canal
     int32_t channel = WiFi.channel();
-    DBGF("Canal WiFi Atual: %d\n", channel);
 
   } else {
-    DBGLN("Falha ao conectar WiFi. Modo Offline (apenas ESP-NOW via Scan).");
     // Fallback: Tenta encontrar o canal manual se não conectou
     int32_t channel = getWiFiChannel(SSID_MASTER);
     if (channel > 0) {
       esp_wifi_set_promiscuous(true);
       esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
       esp_wifi_set_promiscuous(false);
-      DBGF("Canal forçado para %d (Sem conexão WiFi)\n", channel);
     } else {
-      DBGLN("Master nao encontrado no Scan! Usando canal padrao (1).");
     }
   }
   // --- FIM CONFIGURAÇÃO OTA ---
 
   if (esp_now_init() != ESP_OK) {
-    DBGLN("Erro ao iniciar ESP-NOW");
     return;
   }
 
@@ -204,10 +173,7 @@ void setupNetworkSlave() {
   peerInfo.encrypt = false;
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    DBGLN("Failed to add peer");
   }
-
-  DBGLN("Slave ESP-NOW Ativo.");
 }
 
 void loopNetworkSlave() {
@@ -219,7 +185,6 @@ void loopNetworkSlave() {
     pct.tipo = 3; // Heartbeat
     // pct.dados = {0}; // Zerar dados opcional
     esp_now_send(broadcastAddr, (uint8_t *)&pct, sizeof(pct));
-    DBGLN(">>> Heartbeat enviado <<<");
   }
 }
 

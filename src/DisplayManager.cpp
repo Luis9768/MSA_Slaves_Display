@@ -26,7 +26,7 @@ lv_obj_t *rollerAno;
 lv_obj_t *lblCRE; // Display do RE
 int currentREVal = 0;
 char reBuffer[10] = "";
-lv_obj_t *lblDataDisplay; // [FIX] Declaration added
+lv_obj_t *lblDataDisplay;
 
 lv_obj_t *barProducao;
 lv_obj_t *msgConclusao = NULL;
@@ -74,12 +74,6 @@ void my_touch_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
       lv_obj_set_pos(cursor_obj, x - 5, y - 5); // Centraliza a bolinha
       lv_obj_clear_flag(cursor_obj, LV_OBJ_FLAG_HIDDEN);
       lv_obj_move_foreground(cursor_obj); // Garante que está no topo
-    }
-
-    static unsigned long lastDebug = 0;
-    if (millis() - lastDebug > 200) {
-      DBGF("TOUCH: Raw(%d,%d) -> Screen(%d,%d)\n", p.x, p.y, x, y);
-      lastDebug = millis();
     }
   } else {
     data->state = LV_INDEV_STATE_REL;
@@ -262,12 +256,6 @@ void mostrarTelaProducao(Receita r) {
   recriarDebugCursor();
 
   lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xF0F0F0), 0);
-
-  // ... (existing code for header) ...
-  // Copying header creation for context, but using a targeted replace for the
-  // full function is safer Wait, the user has 300+ lines in this file. I should
-  // only replace the function body or significant parts. Let's rely on the fact
-  // that I am replacing the `mostrarTelaProducao` function logic.
 
   // Cabeçalho
   lv_obj_t *header = lv_obj_create(lv_scr_act());

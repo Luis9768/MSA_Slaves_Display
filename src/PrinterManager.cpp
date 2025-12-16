@@ -20,8 +20,6 @@ void setupPrinter() {
   // Inicializa Serial 2 para a Impressora
   printerSerial.begin(PRINTER_BAUD, SERIAL_8N1, -1, PRINTER_TX_PIN);
 #endif
-
-  DBGLN(">>> PrinterManager: Iniciada");
 }
 
 void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
@@ -33,22 +31,16 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
   unsigned long codigoProd = atol(r.codigo);
 
   // Buffer para o comando ZPL (Aumentado para suportar Logo)
-  // [FIX] Usando static para evitar Stack Overflow (que causa tela
-  // branca/reboot)
   static constexpr size_t ZPL_BUFFER_SIZE = 8192;
   static char zplBuffer[ZPL_BUFFER_SIZE];
 
-  // Prepara a seção do Codigo de Barras (Condicional)
+  // Prepara a seção do Codigo de Barras
   char barcodeSection[256] = "";
-  // Se tiver barcode preenchido (tamanho > 0), monta o ZPL.
-  // Se nao tiver, barcodeSection continua vazio "" e nada é impresso nessa
-  // parte.
   if (r.barcode[0] != '\0') {
     snprintf(barcodeSection, sizeof(barcodeSection),
              "^BY3,2,85^FT329,423^BEI,,Y,N\r\n^FD%s^FS\r\n", r.barcode);
   }
 
-  // CODIGO ORIGINAL (RESTAURADO COM ZPL DO USUARIO)
   int escrito = snprintf(
       zplBuffer, ZPL_BUFFER_SIZE,
       "CT~~CD,~CC^~CT~\r\n"
@@ -81,13 +73,13 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
       "MJljmevfqqz1aF8QIMidxb/"
       "OuYeBTRk4dyeyY487xYw6bE1jMyKkjzh5xdF5854RzOnd4qiIr+Tn9Pv7meieqe9Z/"
       "EedRfwAl7WoT:0C11\r\n"
-
+      " \r\n"
       "^FT375,547^A0I,32,31^FH\\^FDCODIGO: %06lu^FS\r\n"
       "^FT375,523^A0I,20,19^FH\\^FD%s^FS\r\n"
-
+      " \r\n"
       // Barcode
       "%s"
-
+      " \r\n"
       "^FO13,365^GB371,0,8^FS\r\n"
       "^FT356,330^A0I,31,31^FH\\^FDFAB:^FS\r\n"
       "^SL0\r\n"
@@ -109,8 +101,7 @@ void imprimirEtiqueta(Receita r, int contador, DataProducao data, int re) {
     PRINTER_OBJ.write(reinterpret_cast<const uint8_t *>(zplBuffer),
                       (size_t)escrito);
     PRINTER_OBJ.flush();
-    DBGF(">>> ETIQUETA IMPRESSA: %s (Seq: %d) <<<\n", r.descricao, contador);
   } else {
-    DBGLN(">>> ERRO: ZPL Buffer Overflow ou Erro de Formatacao! <<<");
+    // Buffer overflow ou erro
   }
 }
