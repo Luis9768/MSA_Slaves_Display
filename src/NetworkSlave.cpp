@@ -6,15 +6,23 @@
 #include <esp_now.h>
 #include <esp_wifi.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+
 const char *SSID_MASTER = "MASTER_PRODUCAO";
+QueueHandle_t networkQueue;
+
 std::vector<Receita> listaReceitas;
 volatile bool listaAtualizada = false;
 Preferences preferences;
+
 uint8_t broadcastAddr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 String globalHostname = "MSA_SLAVE_UNKNOWN"; // Default
+volatile bool requestNvsSync = false; // Flag to trigger NVS update in loop
 
 unsigned long lastHeartbeatTime = 0;
 long localVersion = 0;
+// Smart Sync 2.0 variables
 bool isSyncing = false;
 std::vector<Receita> tempReceitas;
 
@@ -45,7 +53,7 @@ void carregarReceitasNVS() {
   localVersion = preferences.getLong("version", 0);
 }
 
-// Callback quando recebe dados
+// Callback quando recebe dados (Rodando em ISR - Rápido!)
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   if (len != sizeof(PacoteRede))
     return;
@@ -53,43 +61,50 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   PacoteRede pacote;
   memcpy(&pacote, incomingData, sizeof(pacote));
 
-  // Use switch for cleaner packet handling (defined in Common.h)
+  // Envia para a fila para processar no Loop Principal
+  xQueueSendFromISR(networkQueue, &pacote, NULL);
+}
+
+// Processamento real dos Pacotes (Rodando no Loop - Seguro)
+void processPacket(PacoteRede pacote) {
   switch (pacote.tipo) {
   case PKG_DATA: { // 1 = Receita Individual
     Receita r = pacote.dados;
 
     if (isSyncing) {
-      // During Sync: Add to temp list without saving immediately
+      // FAST PATH: Just add to memory, no NVS yet.
       tempReceitas.push_back(r);
+      // Optional: Update UI progress? Or just wait for end.
     } else {
-      // Legacy/Hot-fix: Update single item immediately
+      // HOT-FIX / SINGLE UPDATE: Save immediately
       salvarReceitaNVS(r);
 
-      // Update in memory list
+      // Update List in place
       bool encontrado = false;
       for (auto &item : listaReceitas) {
         if (item.id == r.id) {
-          if (r.ativa)
+          if (item.ativa && !r.ativa) { // If it was active and now is inactive
+            item.ativa = false;         // Mark inactive
+          } else if (r.ativa) {         // If new recipe is active, update it
             item = r;
-          else
-            item.ativa = false;
+          }
           encontrado = true;
           break;
         }
       }
-      if (!encontrado && r.ativa) {
+      if (!encontrado && r.ativa)
         listaReceitas.push_back(r);
-      }
-      // Remove inactives
+
+      // Cleanup Inactives
       for (auto it = listaReceitas.begin(); it != listaReceitas.end();) {
         if (!it->ativa)
           it = listaReceitas.erase(it);
         else
           ++it;
       }
-      listaAtualizada = true;
 
-      // Update global version if provided (Hot-fix case)
+      listaAtualizada = true;
+      // Version update for single packet (optional, keeps in sync)
       if (pacote.version > localVersion) {
         localVersion = pacote.version;
         preferences.putLong("version", localVersion);
@@ -98,52 +113,53 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
     break;
   }
 
-  case PKG_RESET: { // 2 = RESET TOTAL
+  case PKG_RESET: { // FORCE FACTORY RESET
+    isSyncing = false;
+    tempReceitas.clear();
     listaReceitas.clear();
     preferences.clear();
-    preferences.putInt("reset_done", 1);
+    preferences.putInt("reset_check_v2", 1); // Updated to v2
     preferences.putLong("version", 0);
     localVersion = 0;
     listaAtualizada = true;
     break;
   }
 
-  case PKG_SYNC_START: { // 4 = Start Sync
+  case PKG_SYNC_START: {
     isSyncing = true;
     tempReceitas.clear();
-    DBG("SYNC START received. Ver: %ld", pacote.version);
+    // NOTE: We do NOT clear listaReceitas yet to prevent flicker/empty screen
+    // Wait for END to swap.
+    Serial.println(">>> SYNC START (Smart mode)");
     break;
   }
 
-  case PKG_SYNC_END: { // 5 = End Sync
+  case PKG_SYNC_END: {
     if (isSyncing) {
-      // Commit transaction
+      Serial.println(">>> SYNC END. Swap & Save.");
+      // 1. Swap RAM Lists
       listaReceitas = tempReceitas;
       tempReceitas.clear();
 
-      // Wipe NVS recipes and re-save everything (Safe but slow)
-      // Optimization: In real world, maybe just overwrite keys.
-      // Current salvarReceitaNVS is by ID, so it overwrites.
-      // But we should clean old ones?
-      // Simpler: clear NVS recipe keys?
-      // For now, let's just overwrite based on list.
-      // To be safe against "deleted" items remaining in NVS, we might want to
-      // clear. But clearing ALL NVS takes time. Let's assume overwrite is
-      // enough for now or implement a "clean wipe" if needed. Actually, RESET
-      // packet handles wipe. SYNC assumes replacing valid data.
-
-      for (const auto &r : listaReceitas) {
-        salvarReceitaNVS(r);
-      }
-
+      // 2. Set Version
       localVersion = pacote.version;
-      preferences.putLong("version", localVersion);
+
+      // 3. Trigger NVS Dump (Background)
+      requestNvsSync = true;
+
       listaAtualizada = true;
       isSyncing = false;
-      DBG("SYNC END. Updated to Ver: %ld", localVersion);
     }
     break;
   }
+
+  case PKG_HEARTBEAT: {
+    // Ack/Pong if needed
+    break;
+  }
+
+  default:
+    break;
   }
 }
 
@@ -158,13 +174,17 @@ int32_t getWiFiChannel(const char *ssid) {
 }
 
 void setupNetworkSlave() {
+  // Inicia Queue
+  networkQueue = xQueueCreate(50, sizeof(PacoteRede));
+
   // Inicia NVS
   preferences.begin("slave_db_v5", false);
 
-  // Reset Forcado na primeira vez
-  if (preferences.getInt("reset_done", 0) == 0) {
+  // Reset Forcado na primeira vez (Force Wipe requested by User)
+  if (preferences.getInt("reset_check_v2", 0) == 0) {
     preferences.clear();
-    preferences.putInt("reset_done", 1);
+    preferences.putInt("reset_check_v2", 1);
+    Serial.println(">>> MEMORY WIPED (Factory Reset v2) <<<");
   }
 
   carregarReceitasNVS();
@@ -172,6 +192,7 @@ void setupNetworkSlave() {
   // --- INÍCIO CONFIGURAÇÃO OTA ---
   // Tenta conectar ao WiFi do Master para permitir OTA
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false); // Disable Power Save to ensure 100% Receive Rx
   WiFi.begin(SSID_MASTER, OTA_WIFI_PASS);
 
   // Aguarda conexão por alguns segundos (não bloqueante eternamente)
@@ -246,6 +267,41 @@ void loopNetworkSlave() {
     pct.version = localVersion;
     strncpy(pct.dados.descricao, globalHostname.c_str(), 31); // Send Name
     esp_now_send(broadcastAddr, (uint8_t *)&pct, sizeof(pct));
+  }
+
+  // Processa Fila de Rede
+  if (networkQueue != NULL) {
+    PacoteRede pct;
+    // Processa até 5 pacotes por vez para não travar a UI
+    int count = 0;
+    while (xQueueReceive(networkQueue, &pct, 0) == pdTRUE && count < 5) {
+      processPacket(pct);
+      count++;
+    }
+  }
+
+  // Handle NVS Save Request (Outside of ISR/Callback to prevent WDT)
+  if (requestNvsSync) {
+    Serial.println(">>> PROCESSING NVS SYNC (Safe Mode)...");
+    // Unregister CB to prevent incoming data conflict
+    esp_now_unregister_recv_cb();
+
+    // 1. Wipe Old
+    for (int i = 1; i <= MAX_RECEITAS; i++) {
+      char key[16];
+      sprintf(key, "rec_%d", i);
+      preferences.remove(key);
+    }
+    // 2. Save New
+    for (const auto &r : listaReceitas) {
+      salvarReceitaNVS(r);
+    }
+    preferences.putLong("version", localVersion);
+    Serial.println(">>> NVS SYNC DONE.");
+
+    requestNvsSync = false;
+    // Re-register CB
+    esp_now_register_recv_cb(esp_now_recv_cb_t(OnDataRecv));
   }
 }
 
