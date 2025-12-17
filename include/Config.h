@@ -16,7 +16,9 @@
 // Printer Config (Placa Final: Usa Serial Padrao 1/3)
 // ATENCAO: Debug via USB sera DESATIVADO pois a porta sera usada pela
 // impressora
-#define PRINTER_USES_MAIN_SERIAL 1
+// Printer Config (User Requested: TX Pin 27)
+#define PRINTER_USES_MAIN_SERIAL 0
+#define PRINTER_TX_PIN 27
 #define PRINTER_BAUD 9600
 
 // Se a impressora usa a Serial principal, nao podemos ter debug
@@ -26,8 +28,8 @@
 #define DEBUG_ENABLED 1
 #endif
 
-// Sensor (Atualizado para 27)
-#define PIN_SENSOR_PRODUTO 27
+// Sensor (Definido pelo usuario: 22)
+#define PIN_SENSOR_PRODUTO 22
 
 // LEDs RGB (Novos)
 #define PIN_LED_R 4

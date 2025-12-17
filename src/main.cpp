@@ -24,6 +24,9 @@ void setup() {
   // 1. Inicializa Display (LVGL)
   setupDisplay();
 
+  // FIX: Start Main Serial for Scanner (Pins 1 & 3)
+  Serial.begin(9600);
+
   // 2. Inicializa Rede (ESP-NOW)
   setupNetworkSlave();
 
@@ -31,7 +34,16 @@ void setup() {
   setupPrinter();
 
   // 4. Inicializa Sensor
-  pinMode(PIN_SENSOR_PRODUTO, INPUT_PULLUP);
+  // 4. Inicializa o Sensor "Oficial"
+  // ATIVANDO MODO MULTI-SENSOR (Para descobrir qual pino esta funcionando)
+  // Adicionado pino 22 na lista
+  int candidatos[] = {22, 34, 35, 26, 14, 12, 13, 4, 5};
+  for (int p : candidatos) {
+    if (p == 34 || p == 35)
+      pinMode(p, INPUT); // 34/35 nao tem pullup interno
+    else
+      pinMode(p, INPUT_PULLUP);
+  }
 }
 
 void loop() {
@@ -39,7 +51,6 @@ void loop() {
   loopDisplay();
   loopNetworkSlave();
 
-  // Lógica de Navegação
   int acao = verificarToque();
 
   // --- 1. GLOBAL: Verifica atualizações de lista (Prioridade Máxima) ---
@@ -68,7 +79,8 @@ void loop() {
         estadoAtual = 0; // Força volta para carousel
       }
     } else {
-      // Se o ID mudou ou algo assim, garantimos que não estamos em ID invalido
+      // Se o ID mudou ou algo assim, garantimos que não estamos em ID
+      // invalido
       if (estadoAtual == 1 && idProdutoAtual == 0)
         estadoAtual = 0;
     }
@@ -146,6 +158,7 @@ void loop() {
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
     input.trim(); // Remove \r \n spaces
+    Serial.printf(">>> SCANNER RECEBEU: [%s] <<<\n", input.c_str());
 
     if (input.length() > 0) {
 
@@ -182,30 +195,43 @@ void loop() {
     }
   }
 
-  // LOGICA SENSOR FISICO (Simulação ou Sensor Real NPN)
-  static int lastSensorState = HIGH;
-  int sensorState = digitalRead(PIN_SENSOR_PRODUTO);
+  // LOGICA SENSOR MULTIPLO (AUTO-DETECT) - Restaurado
+  static int lastStates[40];
+  static bool firstRun = true;
+  int pinosScan[] = {22, 34, 35, 26, 14, 12, 13, 4, 5};
 
-  if (estadoAtual == 3 && lastSensorState == HIGH && sensorState == LOW) {
-    // Borda de descida detectada (Fio encostou no GND)
-
-    if (contadorProducao >= receitaAtiva.quantidade) {
-      // Ja esta cheio
-    } else {
-      contadorProducao++;
-      atualizarContador(contadorProducao, receitaAtiva.quantidade);
-
-      imprimirEtiqueta(receitaAtiva, contadorProducao, currentDate, currentRE);
-
-      if (contadorProducao >= receitaAtiva.quantidade) {
-        mostrarMensagemProducaoConcluida();
-        timeProducaoConcluida = millis();
-        estadoAtual = 4;
-      }
-    }
-    delay(200); // Debounce basico
+  if (firstRun) {
+    for (int p : pinosScan)
+      lastStates[p] = HIGH;
+    firstRun = false;
   }
-  lastSensorState = sensorState;
+
+  if (estadoAtual == 3) {
+    for (int p : pinosScan) {
+      int s = digitalRead(p);
+      // Logica INPUT_PULLUP: Ativo em LOW (GND)
+      if (lastStates[p] == HIGH && s == LOW) {
+        Serial.printf(">>> SENSOR DETECTADO NO PINO %d !!! <<<\n", p);
+
+        if (contadorProducao >= receitaAtiva.quantidade) {
+          // Cheio
+        } else {
+          contadorProducao++;
+          atualizarContador(contadorProducao, receitaAtiva.quantidade);
+          imprimirEtiqueta(receitaAtiva, contadorProducao, currentDate,
+                           currentRE);
+
+          if (contadorProducao >= receitaAtiva.quantidade) {
+            mostrarMensagemProducaoConcluida();
+            timeProducaoConcluida = millis();
+            estadoAtual = 4;
+          }
+        }
+        delay(200); // Debounce
+      }
+      lastStates[p] = s;
+    }
+  }
 
   // Pequeno delay para não fritar a CPU (opcional, mas bom para LVGL)
   delay(5);
