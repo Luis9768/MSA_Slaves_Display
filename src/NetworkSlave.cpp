@@ -11,6 +11,7 @@ std::vector<Receita> listaReceitas;
 volatile bool listaAtualizada = false;
 Preferences preferences;
 uint8_t broadcastAddr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+String globalHostname = "MSA_SLAVE_UNKNOWN"; // Default
 
 unsigned long lastHeartbeatTime = 0;
 long localVersion = 0;
@@ -187,6 +188,8 @@ void setupNetworkSlave() {
     byte mac[6];
     WiFi.macAddress(mac);
     hostname += String(mac[5], HEX); // Usa ultimo byte do MAC
+    hostname.toUpperCase();
+    globalHostname = hostname;
     ArduinoOTA.setHostname(hostname.c_str());
 
     ArduinoOTA
@@ -241,7 +244,7 @@ void loopNetworkSlave() {
     PacoteRede pct;
     pct.tipo = PKG_HEARTBEAT; // Heartbeat
     pct.version = localVersion;
-    // pct.dados = {0}; // Zerar dados opcional
+    strncpy(pct.dados.descricao, globalHostname.c_str(), 31); // Send Name
     esp_now_send(broadcastAddr, (uint8_t *)&pct, sizeof(pct));
   }
 }
